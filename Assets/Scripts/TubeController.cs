@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 
 public class TubeController : MonoBehaviour
 {
@@ -194,16 +195,30 @@ public class TubeController : MonoBehaviour
     {
         if (!CanPourInto(targetTube)) return; // 不能倒水，直接返回
 
+        StartCoroutine(MoveRotateAndPour(targetTube));
+    }
+
+    IEnumerator MoveRotateAndPour(TubeController targetTube)
+    {
+        Vector3 originalPosition = transform.position;  // 记录当前瓶子的位置
+        Quaternion originalRotation = transform.rotation; // 记录当前旋转角度
+        Vector3 targetPosition = targetTube.transform.position + new Vector3(1.5f, 2.0f, 0); // 目标瓶子的右侧
+        Quaternion targetRotation = Quaternion.Euler(0, 0, 90); // 逆时针旋转 90°
+
+        // 平滑移动并旋转到目标位置
+        yield return MoveAndRotate(transform, targetPosition, targetRotation, 0.5f);
+
+        // 倒水逻辑
         Color pouringColor = liquidStack.Peek(); // 获取当前瓶子最上层的颜色
         int pourAmount = 0;
 
-        // 倒水逻辑：将相同颜色的水倒入目标瓶，直到目标瓶满或当前颜色倒完
         while (liquidStack.Count > 0 && liquidStack.Peek() == pouringColor && targetTube.liquidStack.Count < maxCapacity)
         {
             liquidStack.Pop(); // 移除当前瓶子顶层水
             targetTube.liquidStack.Push(pouringColor); // 倒入目标瓶
             pourAmount++;
         }
+
         // 🎵 播放倒水音效
         if (pourWaterSound != null && audioSource != null)
         {
@@ -216,6 +231,30 @@ public class TubeController : MonoBehaviour
 
         // **成功倒水后检查游戏是否结束**
         gm2.Instance.CheckGameOver();
+
+        // 倒水完成后，平滑返回原位置并恢复旋转
+        yield return MoveAndRotate(transform, originalPosition, originalRotation, 0.5f);
+    }
+
+    // **同时移动和旋转**
+    IEnumerator MoveAndRotate(Transform obj, Vector3 targetPos, Quaternion targetRot, float duration)
+    {
+        float elapsed = 0;
+        Vector3 startPos = obj.position;
+        Quaternion startRot = obj.rotation;
+        
+        while (elapsed < duration)
+        {
+            float t = elapsed / duration;
+            obj.position = Vector3.Lerp(startPos, targetPos, t);
+            obj.rotation = Quaternion.Lerp(startRot, targetRot, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // 确保最终位置和角度正确
+        obj.position = targetPos;
+        obj.rotation = targetRot;
     }
 
     public bool IsFull()
