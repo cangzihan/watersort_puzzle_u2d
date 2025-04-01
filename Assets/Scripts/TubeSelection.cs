@@ -5,7 +5,6 @@ public class TubeSelection : MonoBehaviour
 {
     private static TubeController selectedTube = null; // 🌟 全局静态变量，所有瓶子共享
     private float moveDistance = 0.3f; // 上移高度
-    private float moveSpeed = 5f; // 移动速度
     private Vector3 originalPosition; // 记录初始位置
     private AudioSource audioSource; // 🎵 音效播放组件
 
@@ -18,9 +17,9 @@ public class TubeSelection : MonoBehaviour
     void Update()
     {
         // 🌟 如果不是被选中的瓶子，并且位置偏离原始位置 -> 自动回到原位
-        if (selectedTube != this.GetComponent<TubeController>())
+        if (selectedTube != this.GetComponent<TubeController>() && selectedTube != null)
         {
-            transform.position = Vector3.MoveTowards(transform.position, originalPosition, moveSpeed * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, originalPosition, 5f * Time.deltaTime);
         }
     }
 
@@ -40,15 +39,16 @@ public class TubeSelection : MonoBehaviour
             }
 
             // Move up
+            // 这里会有一个bug，当第2次点击太快时，这个动画会未执行完，从而执行其他动画，然后继续走未执行的路径
             StopAllCoroutines();
-            StartCoroutine(MoveBottle(originalPosition + Vector3.up * moveDistance));
+            StartCoroutine(MoveBottle(originalPosition + Vector3.up * moveDistance, 20f));
         }
         else if (selectedTube == clickedTube)
         {
             // 🌟 再次点击相同的瓶子 -> 取消选中，回到原位
             selectedTube = null;
             StopAllCoroutines();
-            StartCoroutine(MoveBottle(originalPosition));
+            StartCoroutine(MoveBottle(originalPosition, 5f));
         }
         else
         {
@@ -59,8 +59,9 @@ public class TubeSelection : MonoBehaviour
         }
     }
 
-    IEnumerator MoveBottle(Vector3 targetPos)
+    IEnumerator MoveBottle(Vector3 targetPos, float moveSpeed)
     {
+        Debug.Log("[TubeSelection]MoveBottle");
         while (Vector3.Distance(transform.position, targetPos) > 0.01f)
         {
             transform.position = Vector3.Lerp(transform.position, targetPos, moveSpeed * Time.deltaTime);
